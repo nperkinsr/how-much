@@ -1,0 +1,177 @@
+[
+  {
+    "id": 1,
+    "name": "The Bean",
+    "description": "A charmingly enigmatic polymer clay figurine that captures the essence of simple joy and wonder. This small, bean-shaped creature, with its innocent, wide-eyed gaze and soft smile, is a delightful companion for anyone who loves unique and quirky collectibles.",
+    "image": "images/the-bean.jpg",
+    "price": 20.62
+  },
+  {
+    "id": 2,
+    "name": "World's Tiniest Violin",
+    "description": "This is the World's Tiniest Violin, the ultimate gag gift for anyone who deserves the smallest bit of sympathy.",
+    "image": "images/violin.jpg",
+    "price": 3.49
+  },
+  {
+    "id": 3,
+    "name": "Danny Devito Cheeto Christmas Ornament",
+    "description": "Made from premium impact resitant plastic to ensure that your Danny Decheeto will be around for years to come. Every detail on Danny Devito's profile has been painstakingly recreated and fully integrated into the essence of the Cheeto.",
+    "image": "images/devito.jpg",
+    "price": 9.95
+  },
+    {
+    "id": 4,
+    "name": "Wooden spoon with face engraved",
+    "description": "Put anyone's facial features onto a wooden spoon! Affordable and high quality and comes with a bow tied around the spoon, for that special touch- ready to gift to others.",
+    "image": "images/cage.jpg",
+    "price": 12.71
+  },
+    {
+    "id": 5,
+    "name": "Vintage Cast Iron Garden Gnome",
+    "description": "He has original paint and for his age is in great condition. He has lived as an indoor gnome for well over the last 30 years and has been used as a door stop on occasion. Well loved but needs a new home and some new adventures.",
+    "image": "images/iron-gnome.jpg",
+    "price": 639.00
+  },
+    {
+    "id": 6,
+    "name": "Happy Face Planter",
+    "description": "Handmade with high-quality 3D printing, this whimsical yarn-themed planter will add a touch of creativity to any craft room, desk, or cozy nook.",
+    "image": "images/planter.jpg",
+    "price": 27.34
+  },
+      {
+    "id": 7,
+    "name": "Wicker Egg holder",
+    "description": "This delightful piece features a unique design that resembles a small basket perched on adorable chicken feet. Standing at 8.5 cm tall, it's the perfect size for holding your favorite eggs while bringing a playful element to your dining experience.",
+    "image": "images/egg-holder.jpg",
+    "price": 7.25
+  },
+      {
+    "id": 8,
+    "name": "Earthworm Plush Toy",
+    "description": "Classic earthworm in a nice huggable plush form, made entirely from super soft fleece! This snuggly worm friend measures 31” long, and 5” wide. Made from two shades of pink fleece.",
+    "image": "images/earthworm.jpg",
+    "price": 33.00
+  },
+  {
+  "id": 9,
+  "name": "Cocaine Sugar Bowl",
+  "description": "This sugar bowl is 3 3/8 inches tall with the lid on and about 4 1/2 inches wide. This sugar bowl holds 13 ounces. The lettering is a very heavy duty durable vinyl. This piece should only be hand washed and NOT put into a dishwasher.",
+  "image": "images/cocaine.jpg",
+  "price": 18.00
+},
+{
+  "id": 10,
+  "name": "Hand Tufted Amoeba Shaped Rug",
+  "description": "Premium Hand-Tufted Craftsmanship. Each rug is handmade by skilled artisans using the traditional hand-tufting technique. Crafted with high-quality wool. It is 5x8 feet in size.",
+  "image": "images/rug.jpg",
+  "price": 354.76
+},
+{
+  "id": 11,
+  "name": "Aged Human Teeth in a Box",
+  "description": "Every tooth is 3D printed in resin, way more realistic compared to any teeth made from polymer clay. High realism, and not as stinky as real ones. Hand painted piece by piece.",
+  "image": "images/teeth.jpg",
+  "price": 33.85
+},
+{
+  "id": 12,
+  "name": "Haunted Active Doll | Silas",
+  "description": "Silas's vessel is a classic Raggedy Andy–style doll, approximately 16 inches tall, featuring his signature red yarn hair, stitched smile, and handmade clothing. Despite his cheerful exterior, there's an unmistakable depth to his presence — quiet, observant, and distinctly adult.",
+  "image": "images/silas.jpg",
+  "price": 52.50
+},
+{
+  "id": 13,
+  "name": "Bagels Brass Ring",
+  "description": "Handcrafted in Las Vegas, this ring is solid - no spaces for water to collect and rashes to form - and made for comfort with a slim band on the palm side.",
+  "image": "images/bagels.jpg",
+  "price": 65.00
+},
+{
+  "id": 14,
+  "name": "Shitshow coupon",
+  "description": "Glossy UV and sparkling holographic laminate finish. Perfectly sized at 3.5 x 2 inches. Printed on high-quality 16pt cardstock for durability.",
+  "image": "images/coupon.jpg",
+  "price": 4.69
+},
+{
+  "id": 15,
+  "name": "Whimsical Girl Holding Ugly Dog Painting",
+  "description": "Premium quality print with semigloss finish. Available in 11x14 inches. Printed on high-quality, durable paper to ensure vibrant colors and longevity.",
+  "image": "images/victorian.jpg",
+  "price": 42.00
+},
+{
+  "id": 16,
+  "name": "Toesnail Creature Sculpture",
+  "description": "Resin cast snail sculpture, hand painted to great detail and finished with a permanent wet look. Custom colour schemes are also possible.",
+  "image": "images/toesnail.jpg",
+  "price": 102.76
+},
+{
+  "id": 17,
+  "name": "Handmade Crochet Clown Phone Bag",
+  "description": "Each clown phone case is meticulously handcrafted, showcasing a unique design that perfectly blends with every celebratory atmosphere. Made from high-quality yarn, this phone bag is not only durable but also soft to the touch, ensuring your phone is well-protected while adding a touch of whimsy to your accessories.",
+  "image": "images/phone-bag.jpg",
+  "price": 26.28
+},
+{
+  "id": 18,
+  "name": "xxx",
+  "description": "xxx",
+  "image": "images/xxx.jpg",
+  "price": 0
+},
+{
+  "id": 19,
+  "name": "xxx",
+  "description": "xxx",
+  "image": "images/xxx.jpg",
+  "price": 0
+},
+{
+  "id": 20,
+  "name": "xxx",
+  "description": "xxx",
+  "image": "images/xxx.jpg",
+  "price": 0
+},
+{
+  "id": 21,
+  "name": "xxx",
+  "description": "xxx",
+  "image": "images/xxx.jpg",
+  "price": 0
+},
+{
+  "id": 22,
+  "name": "xxx",
+  "description": "xxx",
+  "image": "images/xxx.jpg",
+  "price": 0
+},
+{
+  "id": 23,
+  "name": "xxx",
+  "description": "xxx",
+  "image": "images/xxx.jpg",
+  "price": 0
+},
+{
+  "id": 24,
+  "name": "xxx",
+  "description": "xxx",
+  "image": "images/xxx.jpg",
+  "price": 0
+},
+{
+  "id": 25,
+  "name": "xxx",
+  "description": "xxx",
+  "image": "images/xxx.jpg",
+  "price": 0
+}
+]

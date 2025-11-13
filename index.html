@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>How much? - Multiplayer game</title>
+  <link rel=" stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div id="app">
+    <header>
+      <img src="images/how-much-logo.png" alt="How much logo" width="200" />
+      <div id="status">Not connected</div>
+    </header>
+
+    <main>
+      <!-- Sign up / lobby -->
+      <section id="signup" class="screen">
+        <h2>Enter your name</h2>
+        <input id="playerName" placeholder="Your name" />
+        <div class="row">
+          <button id="btnJoinHost">Host a game</button>
+          <button id="btnJoinPlayer">Join a game</button>
+        </div>
+        <div id="joinArea" class="hidden">
+          <input id="hostIdInput" placeholder="Host Peer ID to join" />
+          <button id="btnConnectToHost">Connect</button>
+        </div>
+        <p class="small">Hosting will create a game ID you can send to friends.</p>
+      </section>
+
+      <!-- Host controls -->
+      <section id="host" class="screen hidden">
+        <h2>Host dashboard</h2>
+        <div>
+          <label>Your host ID:</label>
+          <input id="hostId" readonly />
+          <button id="btnCopyHostId">Copy</button>
+        </div>
+
+        <div class="panel">
+          <h3>Players</h3>
+          <ul id="playersList"></ul>
+        </div>
+
+        <div id="productsPanel" class="panel">
+          <h3>Products</h3>
+          <ul id="productsList"></ul>
+        </div>
+
+        <div class="panel">
+          <button id="btnStartRound">Start Round</button>
+          <button id="btnShowNext" disabled>Show next product</button>
+          <button id="btnRevealPrice" disabled>Reveal Price</button>
+        </div>
+
+        <div id="hostCurrentProduct" class="panel hidden">
+          <img id="productImgHost" src="" alt="" />
+          <div class="productDetails">
+            <h3 id="productTitleHost"></h3>
+            <p id="productDescHost"></p>
+            <div class="guessRow">
+              <input id="guessInputHost" type="number" placeholder="Your guess" />
+              <button id="btnSendGuessHost">Send Guess</button>
+            </div>
+            <div id="hostRoundResult" class="panel hidden">
+              <h3>Round result</h3>
+              <p id="actualPriceHost"></p>
+              <p id="winnerMsgHost"></p>
+            </div>
+          </div>
+        </div>
+        <div id="hostGuessesList" class="panel hidden">
+          <h4>Guesses</h4>
+          <div id="hostRevealPriceText" class="hidden"><strong>The correct price was: <span
+                id="revealedPriceHost"></span></strong></div>
+          <ul id="guessesUlHost"></ul>
+        </div>
+      </section>
+
+      <!-- Player view -->
+      <section id="player" class="screen hidden">
+        <h2>Game</h2>
+        <div id="currentProduct" class="panel hidden">
+          <img id="productImg" src="" alt="" />
+          <div class="productDetails">
+            <h3 id="productTitleView"></h3>
+            <p id="productDescView"></p>
+            <div class="guessRow">
+              <input id="guessInput" type="number" placeholder="Your guess" />
+              <button id="btnSendGuess">Send Guess</button>
+            </div>
+          </div>
+        </div>
+        <div id="guessesList" class="panel hidden">
+          <h4>Guesses</h4>
+          <div id="revealPriceText" class="hidden"><strong>The correct price was: <span
+                id="revealedPrice"></span></strong></div>
+          <ul id="guessesUl"></ul>
+        </div>
+        <div id="roundResult" class="panel hidden">
+          <h3>Round result</h3>
+          <p id="actualPrice"></p>
+          <p id="winnerMsg"></p>
+        </div>
+        <div class="panel">
+          <h4>Scores</h4>
+          <ul id="scoresList"></ul>
+        </div>
+      </section>
+
+    </main>
+    <footer>
+      <p>How much? - Multiplayer game example using PeerJS<br />
+        &copy; 2025</p>
+    </footer>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>
