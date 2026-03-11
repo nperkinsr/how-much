@@ -1,126 +1,212 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>How much? - Multiplayer game</title>
-  <link rel=" stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css" />
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How Much?</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel=" stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
-  <div id="app">
-    <header>
-      <img src="images/how-much-logo.png" alt="How much logo" width="200" />
-      <div id="status">Not connected</div>
-    </header>
 
-    <main>
-      <!-- Sign up / lobby -->
-      <section id="signup" class="screen">
-        <h2>Enter your name</h2>
-        <input id="playerName" placeholder="Your name" />
-        <div class="row">
-          <button id="btnJoinHost">Host a game</button>
-          <button id="btnJoinPlayer">Join a game</button>
-        </div>
-        <div id="joinArea" class="hidden">
-          <input id="hostIdInput" placeholder="Host Peer ID to join" />
-          <button id="btnConnectToHost">Connect</button>
-        </div>
-        <p class="small">Hosting will create a game ID you can send to friends.</p>
-      </section>
+    <div class="page">
 
-      <!-- Host controls -->
-      <section id="host" class="screen hidden">
-        <h2>Host dashboard</h2>
-        <div>
-          <label>Your host ID:</label>
-          <input id="hostId" readonly />
-          <button id="btnCopyHostId">Copy</button>
+        <div class="card">
+
+            <!-- HEADER -->
+            <header class="card-header">
+
+                <img src="images/how-much-logo.png" alt="How Much Logo" class="logo" />
+
+                <div id="header-info"></div>
+
+                <div id="header-actions"></div>
+
+                <div id="header-counter">
+                    <div class="game-counter-cards">
+                        <div class="game-counter-card" id="counter-round-card">
+                            <span class="game-counter-label">Round</span>
+                            <strong id="round-counter-value">1/15</strong>
+                        </div>
+                        <div class="game-counter-card" id="counter-seconds-card">
+                            <strong id="seconds-counter-value">60</strong>
+                            <span class="game-counter-label">seconds</span>
+                        </div>
+                    </div>
+                    <p id="guesses-counter-text">3 out of 17 players have sent their guesses</p>
+                </div>
+
+            </header>
+
+
+            <!-- CONTENT AREA -->
+            <main class="card-content">
+
+                <!-- XXXXXXXXXXXXX -->
+                <!-- SCREEN: START -->
+                <!-- XXXXXXXXXXXXX -->
+                <section id="screen-start" class="screen active">
+
+                    <h1>Enter your name</h1>
+
+                    <input id="player-name" type="text" placeholder="Anna" class="name-input" maxlength="11">
+                    <p id="name-error" class="input-error">Please enter a name</p>
+
+                    <div class="button-group">
+                        <button class="btn" id="btn-host">Host a game</button>
+                        <button class="btn" id="btn-join">Join a game</button>
+                    </div>
+
+                    <p class="small-text">
+                        Hosting will create a game ID you can send to friends.
+                    </p>
+
+                </section>
+
+                <!-- XXXXXXXXXXXXXXXXXXXXX -->
+                <!-- SCREEN: HOST SETTINGS -->
+                <!-- XXXXXXXXXXXXXXXXXXXXX -->
+                <section id="screen-host-settings" class="screen">
+                    <h1>Settings</h1>
+
+                    <div class="settings-container">
+
+                        <div class="setting-row">
+                            <label>Time to guess</label>
+
+                            <select id="round-time" class="select-input">
+                                <option value="15">15 seconds</option>
+                                <option value="30" selected>30 seconds</option>
+                                <option value="45">45 seconds</option>
+                                <option value="60">60 seconds</option>
+                            </select>
+                        </div>
+
+                        <div class="setting-row">
+                            <label>Number of products</label>
+
+                            <select id="product-count" class="select-input">
+                                <option value="5" selected>5 products</option>
+                                <option value="10">10 products</option>
+                                <option value="15">15 products</option>
+                                <option value="20">20 products</option>
+                                <option value="25">25 products</option>
+                                <option value="30">30 products</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <div class="button-group settings-button-group">
+                        <button class="btn generate-btn" id="generate-room">
+                            Generate game room
+                        </button>
+                        <button class="btn btn-secondary settings-back-btn" id="btn-back-from-host-settings">
+                            Back
+                        </button>
+                    </div>
+                </section>
+
+
+                <!-- XXXXXXXXXXXXXXXXXX -->
+                <!-- SCREEN: HOST LOBBY -->
+                <!-- XXXXXXXXXXXXXXXXXX -->
+                <section id="screen-lobby-host" class="screen">
+
+                    <main class="card-content lobby-main">
+
+                        <div id="players-container" class="players-container">
+                        </div>
+
+                    </main>
+
+                </section>
+
+
+                <!-- XXXXXXXXXXXX -->
+                <!-- SCREEN: JOIN -->
+                <!-- XXXXXXXXXXXX -->
+                <section id="screen-join-as-player" class="screen">
+                    <h1>Join a game</h1>
+
+                    <div class="join-panel">
+                        <input id="join-code" type="text" placeholder="Enter host ID" class="name-input">
+                        <p id="join-code-error" class="input-error">Please enter a valid host ID</p>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn" id="btn-connect-join">Connect to host</button>
+                        <button class="btn btn-secondary" id="btn-back-from-join">Back</button>
+                    </div>
+                </section>
+
+
+                <!-- XXXXXXXXXXXXXXXXXXXX -->
+                <!-- SCREEN: PLAYER LOBBY -->
+                <!-- XXXXXXXXXXXXXXXXXXXX -->
+                <section id="screen-lobby-player" class="screen">
+                    <main class="card-content lobby-main">
+                        <div id="players-container-player" class="players-container"></div>
+                    </main>
+                </section>
+
+                <!-- XXXXXXXXXXXX -->
+                <!-- SCREEN: GAME -->
+                <!-- XXXXXXXXXXXX -->
+                <section id="screen-game" class="screen">
+                    <div class="game-frame">
+                        <div class="game-product-layout">
+                            <div class="game-product-image-wrap">
+                                <img id="game-product-image" src="images/products/banana.jpg" alt="Product image">
+                            </div>
+
+                            <div class="game-product-info">
+                                <h2 id="game-product-title">{Product-name}</h2>
+                                <p id="game-product-description">
+                                    {product-description} Lorem ipsum dolor amet coloring book squid actually woke.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="game-guess-area">
+                            <label class="game-currency-symbol" for="player-guess-input">£</label>
+                            <input id="player-guess-input" type="number" step="0.01" placeholder="45.37">
+                            <button class="btn" id="btn-send-guess">Send your guess</button>
+                        </div>
+
+                        <p id="guess-locked-text">Guess locked! You have sent your guess.</p>
+                    </div>
+
+                    <div id="round-results-overlay" class="results-overlay hidden">
+                        <canvas id="results-confetti-canvas"></canvas>
+                        <div class="results-card" id="results-card">
+                            <p id="results-summary-text" class="results-summary-text"></p>
+                            <div id="results-players-grid" class="results-players-grid"></div>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+
+
+            <!-- FOOTER -->
+            <footer class="card-footer">
+                How much? - Multiplayer game using PeerJS. © 2026
+            </footer>
+
         </div>
 
-        <div class="panel">
-          <h3>Players</h3>
-          <ul id="playersList"></ul>
-        </div>
+    </div>
 
-        <div id="productsPanel" class="panel">
-          <h3>Products</h3>
-          <ul id="productsList"></ul>
-        </div>
 
-        <div class="panel">
-          <button id="btnStartRound">Start Round</button>
-          <button id="btnShowNext" disabled>Show next product</button>
-          <button id="btnRevealPrice" disabled>Reveal Price</button>
-        </div>
-
-        <div id="hostCurrentProduct" class="panel hidden">
-          <img id="productImgHost" src="" alt="" />
-          <div class="productDetails">
-            <h3 id="productTitleHost"></h3>
-            <p id="productDescHost"></p>
-            <div class="guessRow">
-              <input id="guessInputHost" type="number" placeholder="Your guess" />
-              <button id="btnSendGuessHost">Send Guess</button>
-            </div>
-            <div id="hostRoundResult" class="panel hidden">
-              <h3>Round result</h3>
-              <p id="actualPriceHost"></p>
-              <p id="winnerMsgHost"></p>
-            </div>
-          </div>
-        </div>
-        <div id="hostGuessesList" class="panel hidden">
-          <h4>Guesses</h4>
-          <div id="hostRevealPriceText" class="hidden"><strong>The correct price was: <span
-                id="revealedPriceHost"></span></strong></div>
-          <ul id="guessesUlHost"></ul>
-        </div>
-      </section>
-
-      <!-- Player view -->
-      <section id="player" class="screen hidden">
-        <h2>Game</h2>
-        <div id="currentProduct" class="panel hidden">
-          <img id="productImg" src="" alt="" />
-          <div class="productDetails">
-            <h3 id="productTitleView"></h3>
-            <p id="productDescView"></p>
-            <div class="guessRow">
-              <input id="guessInput" type="number" placeholder="Your guess" />
-              <button id="btnSendGuess">Send Guess</button>
-            </div>
-          </div>
-        </div>
-        <div id="guessesList" class="panel hidden">
-          <h4>Guesses</h4>
-          <div id="revealPriceText" class="hidden"><strong>The correct price was: <span
-                id="revealedPrice"></span></strong></div>
-          <ul id="guessesUl"></ul>
-        </div>
-        <div id="roundResult" class="panel hidden">
-          <h3>Round result</h3>
-          <p id="actualPrice"></p>
-          <p id="winnerMsg"></p>
-        </div>
-        <div class="panel">
-          <h4>Scores</h4>
-          <ul id="scoresList"></ul>
-        </div>
-      </section>
-
-    </main>
-    <footer>
-      <p>How much? - Multiplayer game example using PeerJS<br />
-        &copy; 2025</p>
-    </footer>
-  </div>
-
-  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-  <script src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="scripts.js"></script>
 </body>
 
 </html>

@@ -1,0 +1,27 @@
+1. Start screen loads, name validation works, name is capped at 11 chars, first letter capitalises.
+2. Host flow: `Host a game` -> settings -> `Generate game room` -> lobby appears with host ID.
+3. Copy host ID button works.
+4. Join flow: player joins with valid host ID and appears in host/player lobby lists.
+5. Back buttons work from join/settings screens.
+6. Host `Start game` moves all peers to game screen.
+7. Header counter appears only on game screen.
+8. Round counter and seconds match host-selected settings.
+9. Product shown on round start has image/title/description and is same for all players.
+10. Product sequence is randomised and round count matches host-selected product count.
+11. Guess input placeholder disappears on focus.
+12. Sending guess locks input and button, shows “Guess locked” text.
+13. Locked controls styling is correct (grey button/darker input/orange locked text).
+14. Guess counter increments correctly (`x out of y`) for all peers.
+15. Timer counts down correctly and disables controls at 0.
+16. At 0, closest guess winner logic is correct.
+17. Tie case: multiple closest players all receive +100 points.
+18. Round result overlay appears for everyone and highlights winners.
+19. Overlay duration is ~6 seconds, then next round starts automatically.
+20. Next round resets timer, guess UI, and counter.
+21. Final round ends with game-over overlay, overall winner highlighted.
+22. Final confetti appears behind top of results card and success sound plays.
+23. Button click sound plays on all buttons (including dynamic ones).
+24. Player disconnect during lobby/game does not crash app and state updates correctly.
+25. Refresh/close behaviour is acceptable (session ends cleanly).
+26. Layout check on common desktop sizes (no overlap/clipping in header/game/results).
+27. Basic cross-browser sanity (Chrome + Safari/Firefox).
