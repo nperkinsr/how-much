@@ -4,26 +4,26 @@
 
 const gameState = {
   playerName: "",
-  isHost: false,
+  isHost: false, // This is determined at the start
   roundTime: 30,
   productCount: 5,
   gameCode: "",
-  gameStarted: false,
+  gameStarted: false, // Becomes true once the host starts the game
 
   players: [],
-  usedAvatars: [],
+  usedAvatars: [], // To avoid duplicate avatar assignments
   usedTitles: [],
 
   productsCatalog: [],
-  roundProducts: [],
+  roundProducts: [], // Products selected for the current game session
   totalRounds: 0,
   currentRoundIndex: 0,
 
   guessedPeerIds: [],
-  guessesByPeer: {},
+  guessesByPeer: {}, // { peerId: guessValue }
 
-  roundTimerId: null,
-  roundResultsTimeoutId: null,
+  roundTimerId: null, // For counting down the seconds in a round
+  roundResultsTimeoutId: null, // To control how long the round results screen is shown before moving to the next round
 };
 
 const networkState = {
@@ -33,6 +33,7 @@ const networkState = {
   connectedToHost: null,
 };
 
+// For the confetti animation I found on CodePen by user "Lukasz Kwasniewski" - https://codepen.io/lukaszkwasniewski/pen/KKVqZyB
 const confettiState = {
   particles: [],
   animationId: null,
@@ -69,7 +70,9 @@ const guessesCounterText = document.getElementById("guesses-counter-text");
 
 const gameProductImage = document.getElementById("game-product-image");
 const gameProductTitle = document.getElementById("game-product-title");
-const gameProductDescription = document.getElementById("game-product-description");
+const gameProductDescription = document.getElementById(
+  "game-product-description",
+);
 
 const playerGuessInput = document.getElementById("player-guess-input");
 const sendGuessBtn = document.getElementById("btn-send-guess");
@@ -79,7 +82,9 @@ const roundResultsOverlay = document.getElementById("round-results-overlay");
 const resultsCard = document.getElementById("results-card");
 const resultsSummaryText = document.getElementById("results-summary-text");
 const resultsPlayersGrid = document.getElementById("results-players-grid");
-const resultsConfettiCanvas = document.getElementById("results-confetti-canvas");
+const resultsConfettiCanvas = document.getElementById(
+  "results-confetti-canvas",
+);
 
 const buttonClickSound = new Audio("images/buttonClick.mp3");
 const successSound = new Audio("images/success.mp3");
@@ -100,7 +105,7 @@ joinCodeInput.addEventListener("input", handleJoinCodeInput);
 playerGuessInput.addEventListener("focus", handleGuessInputFocus);
 sendGuessBtn.addEventListener("click", handleSendGuessClick);
 
-// This one handler gives all buttons a click sound, including buttons created later.
+// This one handler gives all buttons a click sound
 document.addEventListener("click", handleGlobalButtonClick);
 window.addEventListener("resize", resizeConfettiCanvas);
 
@@ -260,7 +265,10 @@ function handleBackToStart() {
 async function handleStartGameClick() {
   await ensureProductsLoaded();
 
-  const totalRounds = Math.min(gameState.productCount, gameState.productsCatalog.length);
+  const totalRounds = Math.min(
+    gameState.productCount,
+    gameState.productsCatalog.length,
+  );
   if (totalRounds === 0) return;
 
   gameState.roundProducts = pickRandomProductsForGame(totalRounds);
@@ -585,7 +593,9 @@ function getRoundWinnerIds(actualPrice) {
   });
 
   return entries
-    .filter(([, guess]) => Math.abs(Number(guess) - actualPrice) === closestDiff)
+    .filter(
+      ([, guess]) => Math.abs(Number(guess) - actualPrice) === closestDiff,
+    )
     .map(([peerId]) => peerId);
 }
 
@@ -739,7 +749,11 @@ function spawnConfettiBurst() {
 function drawAndUpdateConfetti() {
   const ctx = resultsConfettiCanvas?.getContext("2d");
 
-  if (!ctx || !roundResultsOverlay || roundResultsOverlay.classList.contains("hidden")) {
+  if (
+    !ctx ||
+    !roundResultsOverlay ||
+    roundResultsOverlay.classList.contains("hidden")
+  ) {
     confettiState.animationId = null;
     return;
   }
@@ -763,7 +777,12 @@ function drawAndUpdateConfetti() {
     ctx.translate(particle.x, particle.y);
     ctx.rotate(particle.rotation);
     ctx.fillStyle = particle.color;
-    ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size * 0.65);
+    ctx.fillRect(
+      -particle.size / 2,
+      -particle.size / 2,
+      particle.size,
+      particle.size * 0.65,
+    );
     ctx.restore();
   });
 
@@ -808,7 +827,12 @@ function stopWinnerConfetti() {
 
   const ctx = resultsConfettiCanvas?.getContext("2d");
   if (ctx && roundResultsOverlay) {
-    ctx.clearRect(0, 0, roundResultsOverlay.clientWidth, roundResultsOverlay.clientHeight);
+    ctx.clearRect(
+      0,
+      0,
+      roundResultsOverlay.clientWidth,
+      roundResultsOverlay.clientHeight,
+    );
   }
 }
 
@@ -816,9 +840,13 @@ function stopWinnerConfetti() {
 // SECTION 15: PEER CONNECTION CORE
 /////////////////////////////////////////////////////
 
-function createPeerConnection() {
+function createShortJoinCode() {
+  return Math.random().toString(36).slice(2, 10).toUpperCase();
+}
+
+function createPeerConnection(customPeerId) {
   return new Promise((resolve) => {
-    const peer = new window.Peer(undefined, { debug: 1 });
+    const peer = new window.Peer(customPeerId, { debug: 1 });
 
     peer.on("open", (id) => {
       networkState.peer = peer;
@@ -833,7 +861,8 @@ function createPeerConnection() {
 /////////////////////////////////////////////////////
 
 async function startHostLobby() {
-  const peer = await createPeerConnection();
+  const hostJoinCode = createShortJoinCode();
+  const peer = await createPeerConnection(hostJoinCode);
   const hostId = networkState.myPeerId;
 
   gameState.gameCode = hostId;

@@ -3,7 +3,7 @@
 ========================================= */
 
 :root {
-  --background: #adafa1; /* pale green page background */
+  --background: #262816; /* pale green page background */
 
   --color1: #ffffff; /* white */
   --color2: #ccc; /* light border */
@@ -352,8 +352,10 @@
   border: none;
   outline: none;
   padding: 10px 10px;
-  width: 300px;
-  font-size: 14px;
+  width: 100px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
 }
 
 .copy-btn {
