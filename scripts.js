@@ -33,7 +33,7 @@ const networkState = {
   connectedToHost: null,
 };
 
-// For the confetti animation I found on CodePen by user "Lukasz Kwasniewski" - https://codepen.io/lukaszkwasniewski/pen/KKVqZyB
+// For the confetti animation I found on CodePen by user "Lukasz Kwasniewski" here https://codepen.io/lukaszkwasniewski/pen/KKVqZyB
 const confettiState = {
   particles: [],
   animationId: null,
@@ -228,6 +228,7 @@ function showScreen(screenId) {
 /////////////////////////////////////////////////////
 
 function handleHostClick() {
+  // Move to host settings first to choose round time and product count
   const name = getValidatedPlayerName();
   if (!name) return;
 
@@ -237,6 +238,7 @@ function handleHostClick() {
 }
 
 function handleJoinClick() {
+  // Move to join screen first to enter host code before connecting
   const name = getValidatedPlayerName();
   if (!name) return;
 
@@ -246,12 +248,14 @@ function handleJoinClick() {
 }
 
 async function handleGenerateRoom() {
+  // This is the "Start Hosting" button in the host settings screen
   gameState.roundTime = parseInt(roundTimeSelect.value, 10);
   gameState.productCount = parseInt(productCountSelect.value, 10);
   await startHostLobby();
 }
 
 async function handleConnectJoin() {
+  // This is the "Connect" button in the join screen after entering the host code
   const hostCode = getValidatedJoinCode();
   if (!hostCode) return;
 
@@ -259,23 +263,27 @@ async function handleConnectJoin() {
 }
 
 function handleBackToStart() {
+  // For both host and join flows, the back button just returns to the start screen
   showScreen("screen-start");
 }
 
 async function handleStartGameClick() {
+  // Only the host can see this button, and it starts the game for everyone
   await ensureProductsLoaded();
 
   const totalRounds = Math.min(
+    // Ensure we have enough products for the selected product count and number of rounds
     gameState.productCount,
     gameState.productsCatalog.length,
   );
   if (totalRounds === 0) return;
 
-  gameState.roundProducts = pickRandomProductsForGame(totalRounds);
+  gameState.roundProducts = pickRandomProductsForGame(totalRounds); // Select products for this game session
   gameState.totalRounds = totalRounds;
   gameState.gameStarted = true;
 
   const payload = {
+    // The host sends this payload to all players to start the game with the same settings and products
     roundTime: gameState.roundTime,
     totalRounds,
     roundProducts: gameState.roundProducts,
@@ -287,17 +295,19 @@ async function handleStartGameClick() {
 }
 
 function handleSendGuessClick() {
+  // When a player submits their guess, we validate it and then either register it directly (if host) or send it to the host for registration
   if (playerGuessInput.disabled) return;
 
-  const rawValue = playerGuessInput.value.trim();
+  const rawValue = playerGuessInput.value.trim(); // We allow players to submit guesses like "45", "45.3", or "45.37", but we need to validate that it's a number before accepting it
   if (!rawValue) return;
 
-  const guessValue = Number(rawValue);
+  const guessValue = Number(rawValue); // This will convert valid numeric strings to numbers, and invalid ones to NaN
   if (Number.isNaN(guessValue)) return;
 
   lockGuessUI();
 
   if (gameState.isHost) {
+    // If this player is the host, we can register their guess directly without sending it over the network
     const isNewGuess = registerGuessForPeer(networkState.myPeerId, guessValue);
     if (isNewGuess) {
       broadcastGuessCounter();
@@ -306,6 +316,7 @@ function handleSendGuessClick() {
   }
 
   if (networkState.connectedToHost && networkState.connectedToHost.open) {
+    //If this player is a guest, we need to send their guess to the host so it can be registered and included in the round results calculations
     networkState.connectedToHost.send({
       type: "submitGuess",
       payload: {
@@ -321,19 +332,30 @@ function handleSendGuessClick() {
 /////////////////////////////////////////////////////
 
 function handleGlobalButtonClick(event) {
-  const button = event.target.closest("button");
-  if (!button || button.disabled) return;
+  // The click handler is attached to the whole document, so we need to
+  // make sure the thing that got clicked was actually a button
+  var button = event.target.closest("button");
+  if (!button) {
+    return;
+  }
+
+  // Don't play a sound if the button is disabled.
+  if (button.disabled) {
+    return;
+  }
+
   playButtonClickSound();
 }
 
 function playButtonClickSound() {
-  const instance = buttonClickSound.cloneNode();
-  instance.play().catch(() => {});
+  // We make a new Audio object each time I want to play the sound because if I reuse the same one, it won't play again until the first sound has finished playing
+  var sound = new Audio("images/buttonClick.mp3");
+  sound.play();
 }
 
 function playSuccessSound() {
-  const instance = successSound.cloneNode();
-  instance.play().catch(() => {});
+  var sound = new Audio("images/success.mp3");
+  sound.play();
 }
 
 /////////////////////////////////////////////////////
@@ -341,17 +363,20 @@ function playSuccessSound() {
 /////////////////////////////////////////////////////
 
 function renderLobbyPlayerLists() {
+  // Both host and player lobbies use the same player list rendering, just in different containers
   renderPlayers("players-container");
   renderPlayers("players-container-player");
 }
 
 function renderPlayers(containerId) {
+  // This renders the list of players in the lobby, showing their avatar, name, title, and points
   const container = document.getElementById(containerId);
   if (!container) return;
 
   container.innerHTML = "";
 
   gameState.players.forEach((player) => {
+    // For each player in the game state, we create a card element and append it to the container
     const card = document.createElement("div");
     card.classList.add("player-card");
 
@@ -373,6 +398,7 @@ function renderPlayers(containerId) {
 /////////////////////////////////////////////////////
 
 async function ensureProductsLoaded() {
+  // We only load the products once, when the host starts the first game. After that, the selected products for the game session are stored in gameState.roundProducts, so we don't need to load or pick products again for subsequent rounds in the same session
   if (gameState.productsCatalog.length > 0) return;
 
   const response = await fetch("products.json");
@@ -394,6 +420,7 @@ function pickRandomProductsForGame(count) {
 }
 
 function applyStartGamePayload(payload) {
+  // When the host starts the game, they send a payload to all players with the game settings and selected products
   gameState.roundTime = payload.roundTime;
   gameState.totalRounds = payload.totalRounds;
   gameState.roundProducts = payload.roundProducts || [];
@@ -406,6 +433,7 @@ function applyStartGamePayload(payload) {
 }
 
 function startRoundAtIndex(roundIndex) {
+  // This sets up the game state and UI for the start of a round, based on the selected products and settings
   gameState.currentRoundIndex = roundIndex;
   gameState.guessedPeerIds = [];
   gameState.guessesByPeer = {};
@@ -421,6 +449,7 @@ function startRoundAtIndex(roundIndex) {
 }
 
 function renderCurrentRoundProduct() {
+  // This updates the product image, title, and description in the UI for the current round's product
   const product = gameState.roundProducts[gameState.currentRoundIndex];
   if (!product) return;
 
@@ -432,10 +461,12 @@ function renderCurrentRoundProduct() {
 }
 
 function setRoundCounter() {
+  // This updates the round counter text in the UI to show the current round number and total rounds (e.g. "Round 2/5")
   roundCounterValue.textContent = `${gameState.currentRoundIndex + 1}/${gameState.totalRounds}`;
 }
 
 function updateGuessCounterText() {
+  // This updates the text in the UI that shows how many players have submitted their guesses out of the total number of players (i.e. "3 out of 5 players have sent their guesses")
   guessesCounterText.textContent = `${gameState.guessedPeerIds.length} out of ${gameState.players.length} players have sent their guesses`;
 }
 
@@ -444,11 +475,13 @@ function updateGuessCounterText() {
 /////////////////////////////////////////////////////
 
 function setGuessControlsEnabled(isEnabled) {
+  // This enables or disables the guess input and send button, which is used to prevent players from changing their guess after they've submitted it
   playerGuessInput.disabled = !isEnabled;
   sendGuessBtn.disabled = !isEnabled;
 }
 
 function resetGuessUI() {
+  // This resets the guess input UI to its default state at the start of each round, clearing any previous input and hiding the "guess locked" text
   playerGuessInput.value = "";
   playerGuessInput.placeholder = "45.37";
   guessLockedText.style.display = "none";
@@ -456,6 +489,7 @@ function resetGuessUI() {
 }
 
 function lockGuessUI() {
+  // This locks the guess input UI after a player submits their guess, preventing them from changing it and showing the "guess locked" text
   guessLockedText.style.display = "block";
   setGuessControlsEnabled(false);
 }
@@ -465,21 +499,23 @@ function lockGuessUI() {
 /////////////////////////////////////////////////////
 
 function clearRunningTimers() {
+  // This is used to clear any existing timers when a round ends or when a player leaves
   if (gameState.roundTimerId) {
     clearInterval(gameState.roundTimerId);
     gameState.roundTimerId = null;
   }
 
   if (gameState.roundResultsTimeoutId) {
-    clearTimeout(gameState.roundResultsTimeoutId);
+    // This clears the timeout that automatically moves to the next round after showing the round results
     gameState.roundResultsTimeoutId = null;
   }
 }
 
 function startRoundTimer(seconds) {
+  // This starts the countdown timer for a round
   clearRunningTimers();
 
-  let remainingSeconds = Number(seconds);
+  let remainingSeconds = Number(seconds); // Number constructor... new thing https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/Number
   secondsCounterValue.textContent = String(remainingSeconds);
 
   gameState.roundTimerId = setInterval(() => {
@@ -499,7 +535,7 @@ function startRoundTimer(seconds) {
 }
 
 function registerGuessForPeer(peerId, value) {
-  if (gameState.guessedPeerIds.includes(peerId)) return false;
+  // This registers a player's guess in the game state ensuring that each player can only submit one guess per round
 
   gameState.guessedPeerIds.push(peerId);
   gameState.guessesByPeer[peerId] = Number(value);
@@ -508,18 +544,20 @@ function registerGuessForPeer(peerId, value) {
 }
 
 function finishRoundAsHost() {
+  // When the round timer runs out, the host is responsible for calculating the round results, awarding points, and then automatically moving to the next round after a short delay
   const currentProduct = gameState.roundProducts[gameState.currentRoundIndex];
   if (!currentProduct) return;
 
-  const actualPrice = Number(currentProduct.price);
-  const winnerIds = getRoundWinnerIds(actualPrice);
+  const actualPrice = Number(currentProduct.price); // The actual price of the product for the current round used to calculate which player's guess was closest
+  const winnerIds = getRoundWinnerIds(actualPrice); // This calculates the winner(s) of the round based on whose player's guess was closest to the actual price
 
-  awardRoundPoints(winnerIds);
+  awardRoundPoints(winnerIds); // This awards points to the winners of the round. In this implementation, each winner gets 100 points
 
-  const summaryText = buildRoundSummaryText(winnerIds, actualPrice);
+  const summaryText = buildRoundSummaryText(winnerIds, actualPrice); // This builds the summary text that is shown in the round results overlay, summarising who won the round and what the actual price was
   showResultsOverlay(summaryText, winnerIds);
 
   broadcastToPlayers({
+    // The host sends the round results to all players so they can see the summary and updated points
     type: "roundResult",
     payload: {
       summaryText,
@@ -528,15 +566,16 @@ function finishRoundAsHost() {
     },
   });
 
-  const isLastRound = gameState.currentRoundIndex >= gameState.totalRounds - 1;
+  const isLastRound = gameState.currentRoundIndex >= gameState.totalRounds - 1; // Check if this was the last round. If it was, we will show the final game results after the round results overlay
 
   gameState.roundResultsTimeoutId = setTimeout(() => {
+    // After a delay of 6 seconds to allow players to see the round results, we either move to the next round or show the final game results if this was the last round
     if (isLastRound) {
       finishGameAsHost();
       return;
     }
 
-    const nextRoundIndex = gameState.currentRoundIndex + 1;
+    const nextRoundIndex = gameState.currentRoundIndex + 1; // Move to the next round
     startRoundAtIndex(nextRoundIndex);
 
     broadcastToPlayers({
@@ -560,6 +599,7 @@ function awardRoundPoints(winnerIds) {
 }
 
 function finishGameAsHost() {
+  // When the last round finishes, the host calculates the overall game results and shows the final summary and winner(s) in the results overlay
   const winnerIds = getOverallWinnerIds();
   const summaryText = buildGameSummaryText(winnerIds);
 
@@ -580,12 +620,14 @@ function finishGameAsHost() {
 /////////////////////////////////////////////////////
 
 function getRoundWinnerIds(actualPrice) {
+  // This calculates the winner(s) of the round based on whose player's guess was closest to the actual price
   const entries = Object.entries(gameState.guessesByPeer);
   if (entries.length === 0) return [];
 
-  let closestDiff = Number.POSITIVE_INFINITY;
+  let closestDiff = Number.POSITIVE_INFINITY; // "For now, the difference is infinitely large. I haven't found anything closer yet."
 
   entries.forEach(([, guess]) => {
+    // "For each guess, I check how close it is to the actual price. If it's closer than anything I've seen before, I update my closest difference."
     const diff = Math.abs(Number(guess) - actualPrice);
     if (diff < closestDiff) {
       closestDiff = diff;
@@ -594,12 +636,14 @@ function getRoundWinnerIds(actualPrice) {
 
   return entries
     .filter(
+      // "Then, I go through all the guesses again and find all the ones that are exactly as close as the closest difference I found. Those are the winners"
       ([, guess]) => Math.abs(Number(guess) - actualPrice) === closestDiff,
     )
-    .map(([peerId]) => peerId);
+    .map(([peerId]) => peerId); // "Finally, I return the peer IDs of the winners so I can award them points and show their names in the round results summary"
 }
 
 function getOverallWinnerIds() {
+  // This calculates the overall winner(s) of the game based on who has the most points after all rounds are finished
   if (gameState.players.length === 0) return [];
 
   let topScore = Number.NEGATIVE_INFINITY;
@@ -616,10 +660,12 @@ function getOverallWinnerIds() {
 }
 
 function getPlayerById(peerId) {
+  // This is a helper function to get a player's information (like their name) based on their peer id
   return gameState.players.find((player) => player.peerId === peerId);
 }
 
 function formatPrice(value) {
+  // This formats a number to always show TWO DECIMAL PLACES which is used for displaying prices in the round results summary
   return Number(value).toFixed(2);
 }
 
@@ -628,7 +674,7 @@ function buildRoundSummaryText(winnerIds, actualPrice) {
     return `No one guessed this round. The real price was £${formatPrice(actualPrice)}.`;
   }
 
-  const winnerNames = winnerIds
+  const winnerNames = winnerIds // This builds a string of the winner(s) names to show in the round results summary. Accounts for 2 winners witht he "and"
     .map((peerId) => getPlayerById(peerId)?.name || "Player")
     .join(", ");
 
@@ -641,6 +687,7 @@ function buildRoundSummaryText(winnerIds, actualPrice) {
 }
 
 function buildGameSummaryText(winnerIds) {
+  // This builds the summary text for the end of the game, showing who won overall and with how many points. Accounts for ties and the case where no one wins (e.g. if no one guessed in the last round and everyone has 0 points)
   if (winnerIds.length === 0) {
     return "Game over. No winner this time.";
   }
@@ -663,6 +710,7 @@ function buildGameSummaryText(winnerIds) {
 /////////////////////////////////////////////////////
 
 function showResultsOverlay(summaryText, winnerIds, options = {}) {
+  // This shows the round results overlay with the summary text and highlights the winner(s). If options.celebrate is true, it also starts the confetti animation and plays a sound effect
   resultsSummaryText.textContent = summaryText;
   renderResultsPlayers(winnerIds);
   roundResultsOverlay.classList.remove("hidden");
@@ -681,6 +729,7 @@ function hideResultsOverlay() {
 }
 
 function renderResultsPlayers(winnerIds) {
+  // This renders the list of players in the round results overlay, highlighting the winner(s) and showing their guesses and points
   resultsPlayersGrid.innerHTML = "";
 
   gameState.players.forEach((player) => {
@@ -704,6 +753,7 @@ function renderResultsPlayers(winnerIds) {
   });
 }
 
+//This not mine though... I found this confetti code on CodePen, like i said before
 // Canvas size is recalculated when window size changes, so particles stay sharp.
 function resizeConfettiCanvas() {
   if (!resultsConfettiCanvas || !roundResultsOverlay) return;
@@ -861,6 +911,7 @@ function createPeerConnection(customPeerId) {
 /////////////////////////////////////////////////////
 
 async function startHostLobby() {
+  // When the host clicks the "Start Hosting" button, we create a new peer connection with a generated join code as the peer ID, set up the host game state, and listen for incoming connections from players who want to join the lobby
   const hostJoinCode = createShortJoinCode();
   const peer = await createPeerConnection(hostJoinCode);
   const hostId = networkState.myPeerId;
@@ -868,6 +919,7 @@ async function startHostLobby() {
   gameState.gameCode = hostId;
 
   const hostPlayer = createPlayer({
+    // We also create a player object for the host themselves so that they are included in the lobby player list and can participate in the game like everyone else
     peerId: hostId,
     name: gameState.playerName,
     points: 0,
@@ -904,6 +956,7 @@ function setupHostConnection(connection) {
 }
 
 function handleMessageForHost(peerId, data) {
+  // This handles incoming messages from players in the lobby, such as when they join the lobby or submit their guesses during the game. The host needs to process these messages to update the game state and broadcast relevant updates to all players
   if (data.type === "joinLobby") {
     const incoming = data.payload.player;
 
@@ -922,6 +975,7 @@ function handleMessageForHost(peerId, data) {
   }
 
   if (data.type === "submitGuess") {
+    // When the host receives a guess submission from a player, they need to register that guess in the game state and then broadcast an update to all players so that the guess counter can be updated in everyone's UI
     const senderId = data.payload.peerId || peerId;
     const isNewGuess = registerGuessForPeer(senderId, data.payload.value);
 
@@ -932,6 +986,7 @@ function handleMessageForHost(peerId, data) {
 }
 
 function broadcastLobbyState() {
+  // This broadcasts the current lobby state (host code and list of players) to all connected players in the lobby, which is used to keep everyone's lobby UI in sync when players join or leave before the game starts
   broadcastToPlayers({
     type: "lobbyState",
     payload: {
@@ -942,7 +997,7 @@ function broadcastLobbyState() {
 }
 
 function broadcastGuessCounter() {
-  updateGuessCounterText();
+  // This broadcasts an update to all players with the current list of which players have submitted their guesses
 
   broadcastToPlayers({
     type: "guessCounter",
@@ -953,6 +1008,7 @@ function broadcastGuessCounter() {
 }
 
 function broadcastToPlayers(message) {
+  // This is a helper function to send a message to all connected players in the lobby. The host uses this to broadcast updates like the lobby state, when the game starts, round results, etc.
   Object.values(networkState.hostConnections).forEach((connection) => {
     if (connection && connection.open) {
       connection.send(message);
@@ -980,6 +1036,7 @@ async function connectToHostLobby(hostCode) {
   networkState.connectedToHost = connection;
 
   await new Promise((resolve) => {
+    // We wait to resolve this promise until we've successfully connected to the host and sent our join message, which ensures that we don't show the lobby UI or update the game state until we've joined the host's lobby
     connection.on("open", () => {
       connection.send({
         type: "joinLobby",
@@ -990,6 +1047,7 @@ async function connectToHostLobby(hostCode) {
   });
 
   connection.on("close", () => {
+    // If the connection to the host is closed (e.g. if the host leaves), we reset the game state and return to the start screen
     clearRunningTimers();
     showScreen("screen-start");
   });
@@ -1004,6 +1062,7 @@ async function connectToHostLobby(hostCode) {
 }
 
 function handleMessageForPlayer(data) {
+  // This handles incoming messages from the host in the lobby, such as when the lobby state updates or the game starts
   if (data.type === "lobbyState") {
     gameState.players = data.payload.players;
     gameState.gameCode = data.payload.hostCode || gameState.gameCode;
