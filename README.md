@@ -2,16 +2,6 @@
 
 A small browser-based multiplayer guessing game. Players connect through PeerJS, see the same product each round, and guess the real price.
 
-## Run Locally
-
-Because the app fetches local JSON files, run it from a local web server instead of opening `index.html` directly:
-
-```bash
-python3 -m http.server 8000
-```
-
-Then open `http://localhost:8000`.
-
 ## Multiplayer Check
 
 1. Open the app in one browser tab and host a game.
