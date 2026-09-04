@@ -18,12 +18,12 @@ const gameState = {
   roundProducts: [], // Products selected for the current game session
   totalRounds: 0,
   currentRoundIndex: 0,
+  roundFinished: false,
 
   guessedPeerIds: [],
   guessesByPeer: {}, // { peerId: guessValue }
 
   roundTimerId: null, // For counting down the seconds in a round
-  roundResultsTimeoutId: null, // To control how long the round results screen is shown before moving to the next round
 };
 
 const networkState = {
@@ -31,12 +31,14 @@ const networkState = {
   myPeerId: "",
   hostConnections: {},
   connectedToHost: null,
+  isDisconnecting: false,
 };
 
 // For the confetti animation I found on CodePen by user "Lukasz Kwasniewski" here https://codepen.io/lukaszkwasniewski/pen/KKVqZyB
 const confettiState = {
   particles: [],
   animationId: null,
+  burstTimeoutId: null,
   stopTimeoutId: null,
 };
 
@@ -55,6 +57,7 @@ const joinBtn = document.getElementById("btn-join");
 const generateBtn = document.getElementById("generate-room");
 const roundTimeSelect = document.getElementById("round-time");
 const productCountSelect = document.getElementById("product-count");
+const hostError = document.getElementById("host-error");
 
 const joinCodeInput = document.getElementById("join-code");
 const joinCodeError = document.getElementById("join-code-error");
@@ -76,18 +79,17 @@ const gameProductDescription = document.getElementById(
 
 const playerGuessInput = document.getElementById("player-guess-input");
 const sendGuessBtn = document.getElementById("btn-send-guess");
+const guessError = document.getElementById("guess-error");
 const guessLockedText = document.getElementById("guess-locked-text");
 
 const roundResultsOverlay = document.getElementById("round-results-overlay");
 const resultsCard = document.getElementById("results-card");
 const resultsSummaryText = document.getElementById("results-summary-text");
 const resultsPlayersGrid = document.getElementById("results-players-grid");
+const resultsActions = document.getElementById("results-actions");
 const resultsConfettiCanvas = document.getElementById(
   "results-confetti-canvas",
 );
-
-const buttonClickSound = new Audio("images/buttonClick.mp3");
-const successSound = new Audio("images/success.mp3");
 
 /////////////////////////////////////////////////////
 // SECTION 3: EVENT BINDINGS
@@ -103,6 +105,10 @@ backFromHostSettingsBtn.addEventListener("click", handleBackToStart);
 nameInput.addEventListener("input", handleNameInput);
 joinCodeInput.addEventListener("input", handleJoinCodeInput);
 playerGuessInput.addEventListener("focus", handleGuessInputFocus);
+playerGuessInput.addEventListener("input", handleGuessInputChange);
+nameInput.addEventListener("keydown", handleNameInputKeydown);
+joinCodeInput.addEventListener("keydown", handleJoinCodeInputKeydown);
+playerGuessInput.addEventListener("keydown", handleGuessInputKeydown);
 sendGuessBtn.addEventListener("click", handleSendGuessClick);
 
 // This one handler gives all buttons a click sound
@@ -114,36 +120,85 @@ window.addEventListener("resize", resizeConfettiCanvas);
 /////////////////////////////////////////////////////
 
 function setHeaderIntro() {
-  headerInfo.innerHTML = `
-    <h3>GUESS THE REAL PRICES OF ACTUAL ETSY PRODUCTS</h3>
-    <p>Compete with your friends to see who can guess the closest</p>
-  `;
+  headerInfo.replaceChildren();
 
-  headerActions.innerHTML = "";
+  const title = document.createElement("h3");
+  title.textContent = "GUESS THE REAL PRICES OF ACTUAL ETSY PRODUCTS";
+
+  const subtitle = document.createElement("p");
+  subtitle.textContent = "Compete with your friends to see who can guess the closest";
+
+  headerInfo.append(title, subtitle);
+  headerActions.replaceChildren();
 }
 
 function setHeaderLobbyHost(hostCode) {
-  headerInfo.innerHTML = "";
+  headerInfo.replaceChildren();
+  headerActions.replaceChildren();
 
-  headerActions.innerHTML = `
-    <div class="lobby-header-right">
-      <button id="btn-start-game" class="btn btn-start" disabled>
-        Start game
-      </button>
-      <div class="lobby-host-info">
-        <span>Your host ID:</span>
-        <div class="host-code-box">
-          <input id="host-code" class="host-code-input" readonly value="${hostCode}">
-          <button id="copy-code" class="copy-btn">
-            <i class="bi bi-copy"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
+  const headerRight = document.createElement("div");
+  headerRight.className = "lobby-header-right";
+
+  const startButton = document.createElement("button");
+  startButton.id = "btn-start-game";
+  startButton.className = "btn btn-start";
+  startButton.type = "button";
+  startButton.textContent = "Start game";
+
+  const hostInfo = document.createElement("div");
+  hostInfo.className = "lobby-host-info";
+
+  const label = document.createElement("label");
+  label.htmlFor = "host-code";
+  label.textContent = "Your host ID:";
+
+  const codeBox = document.createElement("div");
+  codeBox.className = "host-code-box";
+
+  const hostCodeInput = document.createElement("input");
+  hostCodeInput.id = "host-code";
+  hostCodeInput.className = "host-code-input";
+  hostCodeInput.readOnly = true;
+  hostCodeInput.value = hostCode;
+
+  const copyButton = document.createElement("button");
+  copyButton.id = "copy-code";
+  copyButton.className = "copy-btn";
+  copyButton.type = "button";
+  copyButton.setAttribute("aria-label", "Copy host ID");
+  copyButton.title = "Copy host ID";
+
+  const copyIcon = document.createElement("i");
+  copyIcon.className = "bi bi-copy";
+  copyIcon.setAttribute("aria-hidden", "true");
+
+  const copyFeedback = document.createElement("span");
+  copyFeedback.id = "copy-feedback";
+  copyFeedback.className = "copy-feedback";
+  copyFeedback.textContent = "Copied";
+
+  copyButton.append(copyIcon);
+  codeBox.append(hostCodeInput, copyButton);
+  hostInfo.append(label, codeBox, copyFeedback);
+  headerRight.append(startButton, hostInfo);
+  headerActions.append(headerRight);
 
   setupCopyButton();
   setupStartGameButton();
+}
+
+function setBusyButton(button, isBusy, busyText) {
+  if (!button) return;
+
+  if (isBusy) {
+    button.dataset.defaultText = button.textContent;
+    button.textContent = busyText;
+    button.disabled = true;
+    return;
+  }
+
+  button.textContent = button.dataset.defaultText || button.textContent;
+  button.disabled = false;
 }
 
 /////////////////////////////////////////////////////
@@ -155,46 +210,99 @@ function handleNameInput() {
     nameInput.value = nameInput.value.slice(0, 11);
   }
 
-  nameError.classList.remove("visible");
-  nameInput.classList.remove("input-invalid");
+  setInputError(nameInput, nameError, false);
 }
 
 function handleJoinCodeInput() {
-  joinCodeError.classList.remove("visible");
-  joinCodeInput.classList.remove("input-invalid");
+  joinCodeInput.value = joinCodeInput.value.trim().toUpperCase();
+  setInputError(joinCodeInput, joinCodeError, false);
 }
 
 function handleGuessInputFocus() {
   playerGuessInput.placeholder = "";
 }
 
+function handleGuessInputChange() {
+  setInputError(playerGuessInput, guessError, false);
+}
+
+function handleNameInputKeydown(event) {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  handleHostClick();
+}
+
+function handleJoinCodeInputKeydown(event) {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  handleConnectJoin();
+}
+
+function handleGuessInputKeydown(event) {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  handleSendGuessClick();
+}
+
 function getValidatedPlayerName() {
   const formatted = formatPlayerName(nameInput.value);
 
   if (formatted === "") {
-    nameError.classList.add("visible");
-    nameInput.classList.add("input-invalid");
+    nameError.textContent = "Please enter a name";
+    setInputError(nameInput, nameError, true);
     return null;
   }
 
-  nameError.classList.remove("visible");
-  nameInput.classList.remove("input-invalid");
+  setInputError(nameInput, nameError, false);
   nameInput.value = formatted;
   return formatted;
 }
 
 function getValidatedJoinCode() {
-  const code = joinCodeInput.value.trim();
+  const code = joinCodeInput.value.trim().toUpperCase();
 
-  if (code === "") {
-    joinCodeError.classList.add("visible");
-    joinCodeInput.classList.add("input-invalid");
+  if (!/^[A-Z0-9]{4,16}$/.test(code)) {
+    joinCodeError.textContent = "Please enter a valid host ID";
+    setInputError(joinCodeInput, joinCodeError, true);
     return null;
   }
 
-  joinCodeError.classList.remove("visible");
-  joinCodeInput.classList.remove("input-invalid");
+  setInputError(joinCodeInput, joinCodeError, false);
+  joinCodeInput.value = code;
   return code;
+}
+
+function getValidatedGuessValue() {
+  const rawValue = playerGuessInput.value.trim();
+  if (!rawValue) {
+    showGuessError("Use pounds and pence, e.g. 23.12");
+    return null;
+  }
+
+  if (!/^\d+(\.\d{2})$/.test(rawValue)) {
+    showGuessError("Use pounds and pence, e.g. 23.12");
+    return null;
+  }
+
+  const guessValue = Number(rawValue);
+  if (!Number.isFinite(guessValue) || guessValue < 0 || guessValue > 999999) {
+    showGuessError("Please enter a valid price");
+    return null;
+  }
+
+  setInputError(playerGuessInput, guessError, false);
+  return guessValue;
+}
+
+function showGuessError(message) {
+  guessError.textContent = message;
+  setInputError(playerGuessInput, guessError, true);
+}
+
+function setInputError(input, errorElement, isVisible) {
+  errorElement.classList.toggle("visible", isVisible);
+  input.classList.toggle("input-invalid", isVisible);
+  input.setAttribute("aria-invalid", String(isVisible));
 }
 
 function formatPlayerName(rawName) {
@@ -215,6 +323,12 @@ function showScreen(screenId) {
   });
 
   document.getElementById(screenId).classList.add("active");
+  const card = document.querySelector(".card");
+  card?.classList.toggle("is-game-screen", screenId === "screen-game");
+  card?.classList.toggle(
+    "is-lobby-screen",
+    screenId === "screen-lobby-host" || screenId === "screen-lobby-player",
+  );
 
   if (screenId === "screen-lobby-host") {
     setHeaderLobbyHost(gameState.gameCode);
@@ -251,7 +365,18 @@ async function handleGenerateRoom() {
   // This is the "Start Hosting" button in the host settings screen
   gameState.roundTime = parseInt(roundTimeSelect.value, 10);
   gameState.productCount = parseInt(productCountSelect.value, 10);
-  await startHostLobby();
+
+  setBusyButton(generateBtn, true, "Creating room...");
+  try {
+    setInputError(roundTimeSelect, hostError, false);
+    await startHostLobby();
+  } catch (error) {
+    console.error(error);
+    hostError.textContent = "Could not create a room. Please try again.";
+    setInputError(roundTimeSelect, hostError, true);
+  } finally {
+    setBusyButton(generateBtn, false);
+  }
 }
 
 async function handleConnectJoin() {
@@ -259,16 +384,38 @@ async function handleConnectJoin() {
   const hostCode = getValidatedJoinCode();
   if (!hostCode) return;
 
-  await connectToHostLobby(hostCode);
+  setBusyButton(connectJoinBtn, true, "Connecting...");
+  try {
+    await connectToHostLobby(hostCode);
+  } catch (error) {
+    console.error(error);
+    joinCodeError.textContent = "Could not connect to that host ID";
+    setInputError(joinCodeInput, joinCodeError, true);
+  } finally {
+    setBusyButton(connectJoinBtn, false);
+  }
 }
 
 function handleBackToStart() {
   // For both host and join flows, the back button just returns to the start screen
+  disconnectFromCurrentSession();
   showScreen("screen-start");
 }
 
 async function handleStartGameClick() {
   // Only the host can see this button, and it starts the game for everyone
+  const startGameBtn = document.getElementById("btn-start-game");
+  setBusyButton(startGameBtn, true, "Starting...");
+
+  try {
+    await startGameAsHost();
+  } catch (error) {
+    console.error(error);
+    setBusyButton(startGameBtn, false);
+  }
+}
+
+async function startGameAsHost() {
   await ensureProductsLoaded();
 
   const totalRounds = Math.min(
@@ -276,7 +423,9 @@ async function handleStartGameClick() {
     gameState.productCount,
     gameState.productsCatalog.length,
   );
-  if (totalRounds === 0) return;
+  if (totalRounds === 0) {
+    return;
+  }
 
   gameState.roundProducts = pickRandomProductsForGame(totalRounds); // Select products for this game session
   gameState.totalRounds = totalRounds;
@@ -298,11 +447,8 @@ function handleSendGuessClick() {
   // When a player submits their guess, we validate it and then either register it directly (if host) or send it to the host for registration
   if (playerGuessInput.disabled) return;
 
-  const rawValue = playerGuessInput.value.trim(); // We allow players to submit guesses like "45", "45.3", or "45.37", but we need to validate that it's a number before accepting it
-  if (!rawValue) return;
-
-  const guessValue = Number(rawValue); // This will convert valid numeric strings to numbers, and invalid ones to NaN
-  if (Number.isNaN(guessValue)) return;
+  const guessValue = getValidatedGuessValue();
+  if (guessValue === null) return;
 
   lockGuessUI();
 
@@ -311,6 +457,7 @@ function handleSendGuessClick() {
     const isNewGuess = registerGuessForPeer(networkState.myPeerId, guessValue);
     if (isNewGuess) {
       broadcastGuessCounter();
+      finishRoundIfEveryoneGuessed();
     }
     return;
   }
@@ -320,11 +467,14 @@ function handleSendGuessClick() {
     networkState.connectedToHost.send({
       type: "submitGuess",
       payload: {
-        peerId: networkState.myPeerId,
         value: guessValue,
       },
     });
+    return;
   }
+
+  showGuessError("Connection lost. Please rejoin the game.");
+  setGuessControlsEnabled(false);
 }
 
 /////////////////////////////////////////////////////
@@ -349,13 +499,13 @@ function handleGlobalButtonClick(event) {
 
 function playButtonClickSound() {
   // We make a new Audio object each time I want to play the sound because if I reuse the same one, it won't play again until the first sound has finished playing
-  var sound = new Audio("images/buttonClick.mp3");
-  sound.play();
+  const sound = new Audio("images/buttonClick.mp3");
+  sound.play().catch(() => {});
 }
 
 function playSuccessSound() {
-  var sound = new Audio("images/success.mp3");
-  sound.play();
+  const sound = new Audio("images/success.mp3");
+  sound.play().catch(() => {});
 }
 
 /////////////////////////////////////////////////////
@@ -373,24 +523,53 @@ function renderPlayers(containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  container.innerHTML = "";
+  container.replaceChildren();
 
   gameState.players.forEach((player) => {
     // For each player in the game state, we create a card element and append it to the container
-    const card = document.createElement("div");
-    card.classList.add("player-card");
-
-    card.innerHTML = `
-      <img src="${player.avatar}" class="player-avatar" alt="${player.name}">
-      <div class="player-info">
-        <div class="player-name">${player.name}</div>
-        <div class="player-title">${player.title}</div>
-        <div class="player-points">${player.points} points</div>
-      </div>
-    `;
-
-    container.appendChild(card);
+    container.appendChild(createPlayerCard(player, "player"));
   });
+}
+
+function createPlayerCard(player, variant) {
+  const card = document.createElement("div");
+  card.className = variant === "results" ? "results-player-card" : "player-card";
+
+  const avatar = document.createElement("img");
+  avatar.className =
+    variant === "results" ? "results-player-avatar" : "player-avatar";
+  avatar.src = getSafeAssetPath(player.avatar, "images/profile/1.jpg");
+  avatar.alt = player.name || "Player";
+
+  const info = document.createElement("div");
+  info.className = variant === "results" ? "" : "player-info";
+
+  const name = document.createElement("div");
+  name.className = variant === "results" ? "results-player-name" : "player-name";
+  name.textContent = player.name || "Player";
+
+  const title = document.createElement("div");
+  title.className =
+    variant === "results" ? "results-player-title" : "player-title";
+  title.textContent = player.title || "";
+
+  const points = document.createElement("div");
+  points.className =
+    variant === "results" ? "results-player-points" : "player-points";
+  points.textContent = `${Number(player.points) || 0} points`;
+
+  info.append(name, title, points);
+  card.append(avatar, info);
+  return card;
+}
+
+function getSafeAssetPath(path, fallback) {
+  if (typeof path !== "string") return fallback;
+  if (/^images\/[a-z0-9/_-]+\.(jpg|jpeg|png|gif|webp|mp3)$/i.test(path)) {
+    return path;
+  }
+
+  return fallback;
 }
 
 /////////////////////////////////////////////////////
@@ -402,6 +581,10 @@ async function ensureProductsLoaded() {
   if (gameState.productsCatalog.length > 0) return;
 
   const response = await fetch("products.json");
+  if (!response.ok) {
+    throw new Error("Could not load products.json");
+  }
+
   const products = await response.json();
   gameState.productsCatalog = Array.isArray(products) ? products : [];
 }
@@ -435,6 +618,7 @@ function applyStartGamePayload(payload) {
 function startRoundAtIndex(roundIndex) {
   // This sets up the game state and UI for the start of a round, based on the selected products and settings
   gameState.currentRoundIndex = roundIndex;
+  gameState.roundFinished = false;
   gameState.guessedPeerIds = [];
   gameState.guessesByPeer = {};
 
@@ -453,7 +637,7 @@ function renderCurrentRoundProduct() {
   const product = gameState.roundProducts[gameState.currentRoundIndex];
   if (!product) return;
 
-  gameProductImage.src = product.image || "";
+  gameProductImage.src = getSafeAssetPath(product.image, "");
   gameProductImage.alt = product.name || "Product image";
   gameProductTitle.textContent = product.name || "{Product-name}";
   gameProductDescription.textContent =
@@ -484,12 +668,15 @@ function resetGuessUI() {
   // This resets the guess input UI to its default state at the start of each round, clearing any previous input and hiding the "guess locked" text
   playerGuessInput.value = "";
   playerGuessInput.placeholder = "45.37";
+  sendGuessBtn.textContent = "Send your guess";
   guessLockedText.style.display = "none";
+  setInputError(playerGuessInput, guessError, false);
   setGuessControlsEnabled(true);
 }
 
 function lockGuessUI() {
   // This locks the guess input UI after a player submits their guess, preventing them from changing it and showing the "guess locked" text
+  sendGuessBtn.textContent = "Guess sent";
   guessLockedText.style.display = "block";
   setGuessControlsEnabled(false);
 }
@@ -503,11 +690,6 @@ function clearRunningTimers() {
   if (gameState.roundTimerId) {
     clearInterval(gameState.roundTimerId);
     gameState.roundTimerId = null;
-  }
-
-  if (gameState.roundResultsTimeoutId) {
-    // This clears the timeout that automatically moves to the next round after showing the round results
-    gameState.roundResultsTimeoutId = null;
   }
 }
 
@@ -536,6 +718,7 @@ function startRoundTimer(seconds) {
 
 function registerGuessForPeer(peerId, value) {
   // This registers a player's guess in the game state ensuring that each player can only submit one guess per round
+  if (!peerId || gameState.guessedPeerIds.includes(peerId)) return false;
 
   gameState.guessedPeerIds.push(peerId);
   gameState.guessesByPeer[peerId] = Number(value);
@@ -543,10 +726,29 @@ function registerGuessForPeer(peerId, value) {
   return true;
 }
 
+function haveAllActivePlayersGuessed() {
+  return (
+    gameState.players.length > 0 &&
+    gameState.guessedPeerIds.length >= gameState.players.length
+  );
+}
+
+function finishRoundIfEveryoneGuessed() {
+  if (gameState.isHost && haveAllActivePlayersGuessed()) {
+    finishRoundAsHost();
+  }
+}
+
 function finishRoundAsHost() {
   // When the round timer runs out, the host is responsible for calculating the round results, awarding points, and then automatically moving to the next round after a short delay
+  if (gameState.roundFinished) return;
+
   const currentProduct = gameState.roundProducts[gameState.currentRoundIndex];
   if (!currentProduct) return;
+
+  gameState.roundFinished = true;
+  clearRunningTimers();
+  setGuessControlsEnabled(false);
 
   const actualPrice = Number(currentProduct.price); // The actual price of the product for the current round used to calculate which player's guess was closest
   const winnerIds = getRoundWinnerIds(actualPrice); // This calculates the winner(s) of the round based on whose player's guess was closest to the actual price
@@ -554,7 +756,11 @@ function finishRoundAsHost() {
   awardRoundPoints(winnerIds); // This awards points to the winners of the round. In this implementation, each winner gets 100 points
 
   const summaryText = buildRoundSummaryText(winnerIds, actualPrice); // This builds the summary text that is shown in the round results overlay, summarising who won the round and what the actual price was
-  showResultsOverlay(summaryText, winnerIds);
+  const roundPlacements = getTopRoundPlacements(actualPrice);
+  showResultsOverlay(summaryText, winnerIds, {
+    canContinue: true,
+    roundPlacements,
+  });
 
   broadcastToPlayers({
     // The host sends the round results to all players so they can see the summary and updated points
@@ -563,31 +769,33 @@ function finishRoundAsHost() {
       summaryText,
       winnerIds,
       players: gameState.players,
+      roundPlacements,
     },
   });
 
-  const isLastRound = gameState.currentRoundIndex >= gameState.totalRounds - 1; // Check if this was the last round. If it was, we will show the final game results after the round results overlay
+}
 
-  gameState.roundResultsTimeoutId = setTimeout(() => {
-    // After a delay of 6 seconds to allow players to see the round results, we either move to the next round or show the final game results if this was the last round
-    if (isLastRound) {
-      finishGameAsHost();
-      return;
-    }
+function continueAfterRoundAsHost() {
+  if (!gameState.isHost || !gameState.roundFinished) return;
 
-    const nextRoundIndex = gameState.currentRoundIndex + 1; // Move to the next round
-    startRoundAtIndex(nextRoundIndex);
+  const isLastRound = gameState.currentRoundIndex >= gameState.totalRounds - 1;
+  if (isLastRound) {
+    finishGameAsHost();
+    return;
+  }
 
-    broadcastToPlayers({
-      type: "roundStart",
-      payload: {
-        currentRoundIndex: nextRoundIndex,
-        roundTime: gameState.roundTime,
-        totalRounds: gameState.totalRounds,
-        players: gameState.players,
-      },
-    });
-  }, 6000);
+  const nextRoundIndex = gameState.currentRoundIndex + 1;
+  startRoundAtIndex(nextRoundIndex);
+
+  broadcastToPlayers({
+    type: "roundStart",
+    payload: {
+      currentRoundIndex: nextRoundIndex,
+      roundTime: gameState.roundTime,
+      totalRounds: gameState.totalRounds,
+      players: gameState.players,
+    },
+  });
 }
 
 function awardRoundPoints(winnerIds) {
@@ -603,7 +811,7 @@ function finishGameAsHost() {
   const winnerIds = getOverallWinnerIds();
   const summaryText = buildGameSummaryText(winnerIds);
 
-  showResultsOverlay(summaryText, winnerIds, { celebrate: true });
+  showResultsOverlay(summaryText, winnerIds, { celebrate: true, gameOver: true });
 
   broadcastToPlayers({
     type: "gameOver",
@@ -613,6 +821,11 @@ function finishGameAsHost() {
       players: gameState.players,
     },
   });
+}
+
+function finishGameLocally() {
+  disconnectFromCurrentSession();
+  showScreen("screen-start");
 }
 
 /////////////////////////////////////////////////////
@@ -640,6 +853,26 @@ function getRoundWinnerIds(actualPrice) {
       ([, guess]) => Math.abs(Number(guess) - actualPrice) === closestDiff,
     )
     .map(([peerId]) => peerId); // "Finally, I return the peer IDs of the winners so I can award them points and show their names in the round results summary"
+}
+
+function getTopRoundPlacements(actualPrice) {
+  return Object.entries(gameState.guessesByPeer)
+    .map(([peerId, guess]) => {
+      const player = getPlayerById(peerId);
+      const numericGuess = Number(guess);
+
+      return {
+        peerId,
+        name: player?.name || "Player",
+        avatar: player?.avatar || "images/profile/1.jpg",
+        title: player?.title || "",
+        points: player?.points || 0,
+        guess: numericGuess,
+        difference: Math.abs(numericGuess - actualPrice),
+      };
+    })
+    .sort((a, b) => a.difference - b.difference || a.guess - b.guess)
+    .slice(0, 5);
 }
 
 function getOverallWinnerIds() {
@@ -712,7 +945,14 @@ function buildGameSummaryText(winnerIds) {
 function showResultsOverlay(summaryText, winnerIds, options = {}) {
   // This shows the round results overlay with the summary text and highlights the winner(s). If options.celebrate is true, it also starts the confetti animation and plays a sound effect
   resultsSummaryText.textContent = summaryText;
-  renderResultsPlayers(winnerIds);
+  if (options.gameOver) {
+    renderFinalLeaderboard(winnerIds);
+  } else if (options.roundPlacements) {
+    renderRoundPlacements(options.roundPlacements, winnerIds);
+  } else {
+    renderResultsPlayers(winnerIds);
+  }
+  renderResultsActions(options);
   roundResultsOverlay.classList.remove("hidden");
 
   if (options.celebrate) {
@@ -725,32 +965,128 @@ function showResultsOverlay(summaryText, winnerIds, options = {}) {
 
 function hideResultsOverlay() {
   roundResultsOverlay.classList.add("hidden");
+  renderResultsActions({});
   stopWinnerConfetti();
 }
 
 function renderResultsPlayers(winnerIds) {
   // This renders the list of players in the round results overlay, highlighting the winner(s) and showing their guesses and points
-  resultsPlayersGrid.innerHTML = "";
+  resultsPlayersGrid.replaceChildren();
+  resultsPlayersGrid.className = "results-players-grid";
 
   gameState.players.forEach((player) => {
-    const card = document.createElement("div");
-    card.className = "results-player-card";
+    const card = createPlayerCard(player, "results");
 
     if (winnerIds.includes(player.peerId)) {
       card.classList.add("winner");
     }
 
-    card.innerHTML = `
-      <img src="${player.avatar}" class="results-player-avatar" alt="${player.name}">
-      <div>
-        <div class="results-player-name">${player.name}</div>
-        <div class="results-player-title">${player.title}</div>
-        <div class="results-player-points">${player.points} points</div>
-      </div>
-    `;
-
     resultsPlayersGrid.appendChild(card);
   });
+}
+
+function renderFinalLeaderboard(winnerIds) {
+  resultsPlayersGrid.replaceChildren();
+  resultsPlayersGrid.className = "results-players-grid final-leaderboard";
+
+  const rankedPlayers = [...gameState.players].sort(
+    (a, b) => (b.points || 0) - (a.points || 0) || a.name.localeCompare(b.name),
+  );
+
+  rankedPlayers.forEach((player, index) => {
+    const row = document.createElement("div");
+    row.className = "leaderboard-row";
+
+    if (winnerIds.includes(player.peerId)) {
+      row.classList.add("winner");
+    }
+
+    const rank = document.createElement("div");
+    rank.className = "leaderboard-rank";
+    rank.textContent = String(index + 1);
+
+    const card = createPlayerCard(player, "results");
+
+    row.append(rank, card);
+    resultsPlayersGrid.appendChild(row);
+  });
+}
+
+function renderRoundPlacements(roundPlacements, winnerIds) {
+  resultsPlayersGrid.replaceChildren();
+  resultsPlayersGrid.className = "results-players-grid round-ranking-grid";
+
+  if (roundPlacements.length === 0) {
+    const emptyText = document.createElement("p");
+    emptyText.className = "results-empty-text";
+    emptyText.textContent = "No guesses were sent this round.";
+    resultsPlayersGrid.appendChild(emptyText);
+    return;
+  }
+
+  const [closestPlayer, ...otherPlayers] = roundPlacements;
+  const topRow = document.createElement("div");
+  topRow.className = "results-top-row";
+  topRow.appendChild(createRoundPlacementCard(closestPlayer, winnerIds, true));
+
+  const nextRow = document.createElement("div");
+  nextRow.className = "results-next-row";
+  otherPlayers.forEach((placement) => {
+    nextRow.appendChild(createRoundPlacementCard(placement, winnerIds, false));
+  });
+
+  resultsPlayersGrid.append(topRow, nextRow);
+}
+
+function createRoundPlacementCard(placement, winnerIds, isFeatured) {
+  const card = createPlayerCard(placement, "results");
+  card.classList.add("round-placement-card");
+
+  if (isFeatured) {
+    card.classList.add("featured");
+  }
+
+  if (winnerIds.includes(placement.peerId)) {
+    card.classList.add("winner");
+  }
+
+  const guessText = document.createElement("div");
+  guessText.className = "results-player-guess";
+  guessText.textContent = `Guessed £${formatPrice(placement.guess)}`;
+  card.querySelector("div")?.appendChild(guessText);
+
+  const differenceText = document.createElement("div");
+  differenceText.className = "results-player-distance";
+  differenceText.textContent = `£${formatPrice(placement.difference)} away`;
+  card.querySelector("div")?.appendChild(differenceText);
+
+  return card;
+}
+
+function renderResultsActions(options = {}) {
+  resultsActions.replaceChildren();
+  resultsActions.classList.add("hidden");
+
+  if (options.canContinue && gameState.isHost) {
+    const button = document.createElement("button");
+    button.className = "btn";
+    button.type = "button";
+    button.textContent = "Continue";
+    button.addEventListener("click", continueAfterRoundAsHost);
+    resultsActions.appendChild(button);
+    resultsActions.classList.remove("hidden");
+    return;
+  }
+
+  if (!options.gameOver) return;
+
+  const backButton = document.createElement("button");
+  backButton.className = "btn";
+  backButton.type = "button";
+  backButton.textContent = "Back to start";
+  backButton.addEventListener("click", finishGameLocally);
+  resultsActions.appendChild(backButton);
+  resultsActions.classList.remove("hidden");
 }
 
 //This not mine though... I found this confetti code on CodePen, like i said before
@@ -851,7 +1187,7 @@ function startWinnerConfetti() {
   stopWinnerConfetti();
 
   spawnConfettiBurst();
-  setTimeout(spawnConfettiBurst, 180);
+  confettiState.burstTimeoutId = setTimeout(spawnConfettiBurst, 180);
 
   if (!confettiState.animationId) {
     confettiState.animationId = requestAnimationFrame(drawAndUpdateConfetti);
@@ -863,6 +1199,11 @@ function startWinnerConfetti() {
 }
 
 function stopWinnerConfetti() {
+  if (confettiState.burstTimeoutId) {
+    clearTimeout(confettiState.burstTimeoutId);
+    confettiState.burstTimeoutId = null;
+  }
+
   if (confettiState.stopTimeoutId) {
     clearTimeout(confettiState.stopTimeoutId);
     confettiState.stopTimeoutId = null;
@@ -891,17 +1232,77 @@ function stopWinnerConfetti() {
 /////////////////////////////////////////////////////
 
 function createShortJoinCode() {
-  return Math.random().toString(36).slice(2, 10).toUpperCase();
+  if (!window.crypto?.getRandomValues) {
+    return Math.random().toString(36).slice(2, 10).toUpperCase();
+  }
+
+  const randomValues = new Uint32Array(2);
+  window.crypto.getRandomValues(randomValues);
+  return Array.from(randomValues)
+    .map((value) => value.toString(36).toUpperCase().padStart(7, "0"))
+    .join("")
+    .slice(0, 8);
 }
 
-function createPeerConnection(customPeerId) {
-  return new Promise((resolve) => {
+function createPeerConnection(customPeerId, timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
     const peer = new window.Peer(customPeerId, { debug: 1 });
+    let isSettled = false;
+
+    const timeoutId = setTimeout(() => {
+      if (isSettled) return;
+      isSettled = true;
+      peer.destroy();
+      reject(new Error("Peer connection timed out"));
+    }, timeoutMs);
 
     peer.on("open", (id) => {
+      if (isSettled) return;
+      isSettled = true;
+      clearTimeout(timeoutId);
       networkState.peer = peer;
       networkState.myPeerId = id;
       resolve(peer);
+    });
+
+    peer.on("error", (error) => {
+      if (isSettled) return;
+      isSettled = true;
+      clearTimeout(timeoutId);
+      reject(error);
+    });
+  });
+}
+
+function waitForConnectionOpen(connection, timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    let isSettled = false;
+
+    const timeoutId = setTimeout(() => {
+      if (isSettled) return;
+      isSettled = true;
+      reject(new Error("Connection timed out"));
+    }, timeoutMs);
+
+    connection.on("open", () => {
+      if (isSettled) return;
+      isSettled = true;
+      clearTimeout(timeoutId);
+      resolve();
+    });
+
+    connection.on("error", (error) => {
+      if (isSettled) return;
+      isSettled = true;
+      clearTimeout(timeoutId);
+      reject(error);
+    });
+
+    connection.on("close", () => {
+      if (isSettled) return;
+      isSettled = true;
+      clearTimeout(timeoutId);
+      reject(new Error("Connection closed"));
     });
   });
 }
@@ -912,8 +1313,7 @@ function createPeerConnection(customPeerId) {
 
 async function startHostLobby() {
   // When the host clicks the "Start Hosting" button, we create a new peer connection with a generated join code as the peer ID, set up the host game state, and listen for incoming connections from players who want to join the lobby
-  const hostJoinCode = createShortJoinCode();
-  const peer = await createPeerConnection(hostJoinCode);
+  const peer = await createHostPeerWithRetry();
   const hostId = networkState.myPeerId;
 
   gameState.gameCode = hostId;
@@ -935,6 +1335,23 @@ async function startHostLobby() {
   renderLobbyPlayerLists();
 }
 
+async function createHostPeerWithRetry(maxAttempts = 3) {
+  let lastError = null;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      return await createPeerConnection(createShortJoinCode());
+    } catch (error) {
+      lastError = error;
+      if (networkState.peer) {
+        networkState.peer.destroy();
+      }
+    }
+  }
+
+  throw lastError || new Error("Could not create host room");
+}
+
 function setupHostConnection(connection) {
   networkState.hostConnections[connection.peer] = connection;
 
@@ -945,12 +1362,15 @@ function setupHostConnection(connection) {
   connection.on("close", () => {
     delete networkState.hostConnections[connection.peer];
     removePlayerById(connection.peer);
+    removeGuessByPeerId(connection.peer);
 
     if (!gameState.gameStarted) {
       broadcastLobbyState();
       renderLobbyPlayerLists();
     } else {
       updateGuessCounterText();
+      broadcastGuessCounter();
+      finishRoundIfEveryoneGuessed();
     }
   });
 }
@@ -976,11 +1396,11 @@ function handleMessageForHost(peerId, data) {
 
   if (data.type === "submitGuess") {
     // When the host receives a guess submission from a player, they need to register that guess in the game state and then broadcast an update to all players so that the guess counter can be updated in everyone's UI
-    const senderId = data.payload.peerId || peerId;
-    const isNewGuess = registerGuessForPeer(senderId, data.payload.value);
+    const isNewGuess = registerGuessForPeer(peerId, data.payload.value);
 
     if (isNewGuess) {
       broadcastGuessCounter();
+      finishRoundIfEveryoneGuessed();
     }
   }
 }
@@ -1003,6 +1423,7 @@ function broadcastGuessCounter() {
     type: "guessCounter",
     payload: {
       guessedPeerIds: gameState.guessedPeerIds,
+      players: gameState.players,
     },
   });
 }
@@ -1035,21 +1456,21 @@ async function connectToHostLobby(hostCode) {
   const connection = peer.connect(normalizedHostCode);
   networkState.connectedToHost = connection;
 
-  await new Promise((resolve) => {
-    // We wait to resolve this promise until we've successfully connected to the host and sent our join message, which ensures that we don't show the lobby UI or update the game state until we've joined the host's lobby
-    connection.on("open", () => {
-      connection.send({
-        type: "joinLobby",
-        payload: { player: selfPlayer },
-      });
-      resolve();
-    });
+  await waitForConnectionOpen(connection);
+  connection.send({
+    type: "joinLobby",
+    payload: { player: selfPlayer },
   });
 
   connection.on("close", () => {
     // If the connection to the host is closed (e.g. if the host leaves), we reset the game state and return to the start screen
+    if (networkState.isDisconnecting) return;
+
     clearRunningTimers();
+    resetSessionState({ keepName: true });
     showScreen("screen-start");
+    nameError.textContent = "Host disconnected. Please join again.";
+    setInputError(nameInput, nameError, true);
   });
 
   connection.on("data", (data) => {
@@ -1087,21 +1508,30 @@ function handleMessageForPlayer(data) {
 
   if (data.type === "guessCounter") {
     gameState.guessedPeerIds = data.payload.guessedPeerIds || [];
+    gameState.players = data.payload.players || gameState.players;
     updateGuessCounterText();
     return;
   }
 
   if (data.type === "roundResult") {
+    clearRunningTimers();
+    gameState.roundFinished = true;
     gameState.players = data.payload.players || gameState.players;
-    showResultsOverlay(data.payload.summaryText, data.payload.winnerIds || []);
+    setGuessControlsEnabled(false);
+    showResultsOverlay(data.payload.summaryText, data.payload.winnerIds || [], {
+      roundPlacements: data.payload.roundPlacements || [],
+    });
     return;
   }
 
   if (data.type === "gameOver") {
     clearRunningTimers();
+    gameState.roundFinished = true;
     gameState.players = data.payload.players || gameState.players;
+    setGuessControlsEnabled(false);
     showResultsOverlay(data.payload.summaryText, data.payload.winnerIds || [], {
       celebrate: true,
+      gameOver: true,
     });
   }
 }
@@ -1113,11 +1543,19 @@ function handleMessageForPlayer(data) {
 function createPlayer({ peerId, name, avatar, title, points }) {
   return {
     peerId,
-    name: name || "Player",
-    avatar: avatar || getRandomAvatar(),
-    title: title || getRandomTitle(),
+    name: formatPlayerName(name || "Player"),
+    avatar: getPlayerAvatar(avatar),
+    title: typeof title === "string" ? title.slice(0, 40) : getRandomTitle(),
     points: Number.isFinite(points) ? points : 0,
   };
+}
+
+function getPlayerAvatar(avatar) {
+  if (typeof avatar === "string") {
+    return getSafeAssetPath(avatar, "images/profile/1.jpg");
+  }
+
+  return getRandomAvatar();
 }
 
 function addOrUpdatePlayer(player) {
@@ -1137,6 +1575,64 @@ function removePlayerById(peerId) {
   gameState.players = gameState.players.filter(
     (player) => player.peerId !== peerId,
   );
+}
+
+function removeGuessByPeerId(peerId) {
+  gameState.guessedPeerIds = gameState.guessedPeerIds.filter(
+    (id) => id !== peerId,
+  );
+  delete gameState.guessesByPeer[peerId];
+}
+
+function disconnectFromCurrentSession() {
+  clearRunningTimers();
+  hideResultsOverlay();
+  networkState.isDisconnecting = true;
+
+  Object.values(networkState.hostConnections).forEach((connection) => {
+    if (connection?.open) connection.close();
+  });
+
+  if (networkState.connectedToHost?.open) {
+    networkState.connectedToHost.close();
+  }
+
+  if (networkState.peer && !networkState.peer.destroyed) {
+    networkState.peer.destroy();
+  }
+
+  resetSessionState({ keepName: true });
+}
+
+function resetSessionState(options = {}) {
+  const playerName = options.keepName ? gameState.playerName : "";
+
+  Object.assign(gameState, {
+    playerName,
+    isHost: false,
+    roundTime: 30,
+    productCount: 5,
+    gameCode: "",
+    gameStarted: false,
+    players: [],
+    usedAvatars: [],
+    usedTitles: [],
+    roundProducts: [],
+    totalRounds: 0,
+    currentRoundIndex: 0,
+    roundFinished: false,
+    guessedPeerIds: [],
+    guessesByPeer: {},
+    roundTimerId: null,
+  });
+
+  Object.assign(networkState, {
+    peer: null,
+    myPeerId: "",
+    hostConnections: {},
+    connectedToHost: null,
+    isDisconnecting: false,
+  });
 }
 
 /////////////////////////////////////////////////////
@@ -1167,9 +1663,17 @@ function getRandomAvatar() {
 }
 
 async function loadTitles() {
-  const response = await fetch("titles.json");
-  const data = await response.json();
-  titles = data.titles;
+  try {
+    const response = await fetch("titles.json");
+    if (!response.ok) return;
+
+    const data = await response.json();
+    if (Array.isArray(data.titles) && data.titles.length > 0) {
+      titles = data.titles;
+    }
+  } catch (error) {
+    console.warn("Could not load titles.json", error);
+  }
 }
 
 function getRandomTitle() {
@@ -1206,15 +1710,160 @@ function setupStartGameButton() {
   startGameBtn.addEventListener("click", handleStartGameClick);
 }
 
-function handleCopyClick() {
+async function handleCopyClick() {
   const hostCodeInput = document.getElementById("host-code");
   if (!hostCodeInput) return;
 
-  navigator.clipboard.writeText(hostCodeInput.value);
+  try {
+    await navigator.clipboard.writeText(hostCodeInput.value);
+    const copyBtn = document.getElementById("copy-code");
+    const copyFeedback = document.getElementById("copy-feedback");
+    if (!copyBtn) return;
+
+    copyBtn.setAttribute("aria-label", "Copied host ID");
+    copyBtn.title = "Copied";
+    copyBtn.classList.add("copied");
+    copyFeedback?.classList.add("visible");
+
+    setTimeout(() => {
+      copyBtn.setAttribute("aria-label", "Copy host ID");
+      copyBtn.title = "Copy host ID";
+      copyBtn.classList.remove("copied");
+      copyFeedback?.classList.remove("visible");
+    }, 1200);
+  } catch (error) {
+    console.error(error);
+    hostCodeInput.select();
+  }
 }
 
 /////////////////////////////////////////////////////
-// SECTION 21: STARTUP
+// SECTION 21: CONSOLE PREVIEW HELPERS
+/////////////////////////////////////////////////////
+
+const previewNames = [
+  "Nelly",
+  "Penny",
+  "Maya",
+  "Theo",
+  "Luna",
+  "Sam",
+  "Rosa",
+  "Kit",
+  "Ava",
+  "Milo",
+  "Zoe",
+  "Jules",
+  "Nina",
+  "Omar",
+  "Iris",
+  "Leo",
+  "Ruby",
+  "Finn",
+  "Tara",
+  "Noah",
+];
+
+function createPreviewPlayers(count) {
+  gameState.usedAvatars = [];
+  gameState.usedTitles = [];
+
+  return Array.from({ length: count }, (_, index) =>
+    createPlayer({
+      peerId: `preview-player-${index + 1}`,
+      name: previewNames[index] || `Player ${index + 1}`,
+      points: Math.floor(Math.random() * 8) * 100,
+    }),
+  );
+}
+
+function showPreviewHostLobby(count = 20) {
+  disconnectFromCurrentSession();
+  gameState.isHost = true;
+  gameState.playerName = "Nelly";
+  gameState.gameCode = createShortJoinCode();
+  gameState.players = createPreviewPlayers(count);
+  showScreen("screen-lobby-host");
+  renderLobbyPlayerLists();
+}
+
+function showPreviewRoundResults(count = 10, options = {}) {
+  disconnectFromCurrentSession();
+  gameState.isHost = options.isHost !== false;
+  gameState.playerName = "Nelly";
+  gameState.players = createPreviewPlayers(count);
+  gameState.totalRounds = 5;
+  gameState.currentRoundIndex = 0;
+  gameState.roundFinished = true;
+  gameState.guessedPeerIds = [];
+  gameState.guessesByPeer = {};
+  showScreen("screen-game");
+  setRoundCounter();
+  secondsCounterValue.textContent = "0";
+  updateGuessCounterText();
+  setGuessControlsEnabled(false);
+
+  const actualPrice = 15.89;
+  const previewGuesses = [15.75, 16.1, 14.95, 17.25, 13.9];
+
+  gameState.players.forEach((player, index) => {
+    const guess =
+      previewGuesses[index] ||
+      Math.max(0.5, actualPrice + (Math.random() * 80 - 40));
+    gameState.guessedPeerIds.push(player.peerId);
+    gameState.guessesByPeer[player.peerId] = Number(guess.toFixed(2));
+  });
+
+  const winnerIds = getRoundWinnerIds(actualPrice);
+  const roundPlacements = getTopRoundPlacements(actualPrice);
+  const summaryText = buildRoundSummaryText(winnerIds, actualPrice);
+
+  showResultsOverlay(summaryText, winnerIds, {
+    canContinue: gameState.isHost,
+    roundPlacements,
+  });
+}
+
+function showPreviewRoundResultsAsGuest(count = 10) {
+  showPreviewRoundResults(count, { isHost: false });
+}
+
+function showPreviewGameOver(count = 10) {
+  disconnectFromCurrentSession();
+  gameState.isHost = true;
+  gameState.playerName = "Nelly";
+  gameState.players = createPreviewPlayers(count).map((player, index) => ({
+    ...player,
+    points: Math.max(0, (count - index) * 100),
+  }));
+  gameState.totalRounds = 5;
+  gameState.currentRoundIndex = 4;
+  showScreen("screen-game");
+  setRoundCounter();
+  secondsCounterValue.textContent = "0";
+  updateGuessCounterText();
+  setGuessControlsEnabled(false);
+
+  const winnerIds = getOverallWinnerIds();
+  showResultsOverlay(buildGameSummaryText(winnerIds), winnerIds, {
+    celebrate: true,
+    gameOver: true,
+  });
+}
+
+window.HowMuchDev = {
+  showHostLobby: showPreviewHostLobby,
+  showRoundResults: showPreviewRoundResults,
+  showRoundResultsAsGuest: showPreviewRoundResultsAsGuest,
+  showGameOver: showPreviewGameOver,
+  reset: () => {
+    disconnectFromCurrentSession();
+    showScreen("screen-start");
+  },
+};
+
+/////////////////////////////////////////////////////
+// SECTION 22: STARTUP
 /////////////////////////////////////////////////////
 
 loadTitles();

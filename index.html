@@ -7,7 +7,7 @@
     <title>How Much?</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel=" stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css" />
@@ -55,7 +55,8 @@
 
                     <h1>Enter your name</h1>
 
-                    <input id="player-name" type="text" placeholder="Anna" class="name-input" maxlength="11">
+                    <input id="player-name" type="text" placeholder="Anna" class="name-input" maxlength="11"
+                        aria-describedby="name-error" aria-invalid="false" autocomplete="nickname">
                     <p id="name-error" class="input-error">Please enter a name</p>
 
                     <div class="button-group">
@@ -78,9 +79,10 @@
                     <div class="settings-container">
 
                         <div class="setting-row">
-                            <label>Time to guess</label>
+                            <label for="round-time">Time to guess</label>
 
-                            <select id="round-time" class="select-input">
+                            <select id="round-time" class="select-input" aria-describedby="host-error"
+                                aria-invalid="false">
                                 <option value="15">15 seconds</option>
                                 <option value="30" selected>30 seconds</option>
                                 <option value="45">45 seconds</option>
@@ -89,7 +91,7 @@
                         </div>
 
                         <div class="setting-row">
-                            <label>Number of products</label>
+                            <label for="product-count">Number of products</label>
 
                             <select id="product-count" class="select-input">
                                 <option value="5" selected>5 products</option>
@@ -111,6 +113,7 @@
                             Back
                         </button>
                     </div>
+                    <p id="host-error" class="input-error">Could not create a room</p>
                 </section>
 
 
@@ -119,12 +122,12 @@
                 <!-- XXXXXXXXXXXXXXXXXX -->
                 <section id="screen-lobby-host" class="screen">
 
-                    <main class="card-content lobby-main">
+                    <div class="card-content lobby-main">
 
                         <div id="players-container" class="players-container">
                         </div>
 
-                    </main>
+                    </div>
 
                 </section>
 
@@ -136,7 +139,9 @@
                     <h1>Join a game</h1>
 
                     <div class="join-panel">
-                        <input id="join-code" type="text" placeholder="Enter host ID" class="name-input">
+                        <input id="join-code" type="text" placeholder="Enter host ID" class="name-input"
+                            aria-describedby="join-code-error" aria-invalid="false" autocomplete="off"
+                            autocapitalize="characters" spellcheck="false">
                         <p id="join-code-error" class="input-error">Please enter a valid host ID</p>
                     </div>
 
@@ -151,9 +156,9 @@
                 <!-- SCREEN: PLAYER LOBBY -->
                 <!-- XXXXXXXXXXXXXXXXXXXX -->
                 <section id="screen-lobby-player" class="screen">
-                    <main class="card-content lobby-main">
+                    <div class="card-content lobby-main">
                         <div id="players-container-player" class="players-container"></div>
-                    </main>
+                    </div>
                 </section>
 
                 <!-- XXXXXXXXXXXX -->
@@ -176,10 +181,13 @@
 
                         <div class="game-guess-area">
                             <label class="game-currency-symbol" for="player-guess-input">£</label>
-                            <input id="player-guess-input" type="number" step="0.01" placeholder="45.37">
+                            <input id="player-guess-input" type="text" pattern="\\d+\\.\\d{2}" maxlength="9"
+                                placeholder="45.37" inputmode="decimal" aria-describedby="guess-error guess-locked-text"
+                                aria-invalid="false">
                             <button class="btn" id="btn-send-guess">Send your guess</button>
                         </div>
 
+                        <p id="guess-error" class="input-error">Use pounds and pence, e.g. 23.12</p>
                         <p id="guess-locked-text">Guess locked! You have sent your guess.</p>
                     </div>
 
@@ -188,6 +196,7 @@
                         <div class="results-card" id="results-card">
                             <p id="results-summary-text" class="results-summary-text"></p>
                             <div id="results-players-grid" class="results-players-grid"></div>
+                            <div id="results-actions" class="results-actions hidden"></div>
                         </div>
                     </div>
                 </section>
