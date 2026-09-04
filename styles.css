@@ -112,6 +112,10 @@
   margin-left: auto;
 }
 
+#header-info:not(:empty) {
+  flex: 1;
+}
+
 #header-info h3 {
   font-size: 14px;
   font-weight: 700;
@@ -426,6 +430,10 @@
 }
 
 #header-actions {
+  display: none;
+}
+
+#header-actions:not(:empty) {
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
@@ -949,8 +957,8 @@
 
   #header-info {
     width: 100%;
-    text-align: left;
-    margin-left: 0;
+    text-align: right;
+    margin-left: auto;
   }
 
   .screen {
