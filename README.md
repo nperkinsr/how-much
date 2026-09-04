@@ -9,12 +9,6 @@ A small browser-based multiplayer guessing game. Players connect through PeerJS,
 3. Open another tab or browser, enter a different player name, and join with that host ID.
 4. Start the game from the host tab and verify both screens stay in sync.
 
-## Quick Validation
-
-```bash
-node --check scripts.js
-node -e "JSON.parse(require('fs').readFileSync('products.json','utf8')); JSON.parse(require('fs').readFileSync('titles.json','utf8')); console.log('json ok')"
-```
 
 ## Notes
 
